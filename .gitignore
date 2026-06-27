@@ -1,0 +1,34 @@
+# Virtual environment
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Data files (too large for GitHub)
+data/candidates.jsonl.gz
+data/candidates.jsonl
+data/precomputed/candidate_embeddings.npy
+data/precomputed/candidate_ids.json
+
+# Submission output (we'll add manually when ready)
+submission/*.csv
+
+# Jupyter
+.ipynb_checkpoints/
+notebooks/.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Sentence transformers cache
+.cache/
+models/
