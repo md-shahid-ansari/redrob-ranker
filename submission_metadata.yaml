@@ -12,7 +12,7 @@ team_members:
 
 github_repo: "https://github.com/md-shahid-ansari/redrob-ranker"
 
-sandbox_link: ""
+sandbox_link: "https://redrob-ranker-by-shahid.streamlit.app"
 
 reproduce_command: "python rank.py"
 
