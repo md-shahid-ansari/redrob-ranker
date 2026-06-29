@@ -131,7 +131,7 @@ Honeypot detection automatically flags and down‑ranks impossible or fraudulent
 
 - The `rank.py` script **does not** require network access.
 - All models are loaded locally (no external API calls).
-- Precomputed embeddings are large; ensure you have enough disk space (~2 GB).
+- Precomputed embeddings are large; ensure you have enough disk space (~145 MB).
 - The sandbox demo runs on‑the‑fly with a small sample, so no precompute is required there.
 
 ---
