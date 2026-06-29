@@ -1,0 +1,52 @@
+team_name: "Md Shahid Ansari"
+
+primary_contact:
+  name: "Md Shahid Ansari"
+  email: "sajarsadaf2000@gmail.com"
+  phone: "+91-8092472401"
+
+team_members:
+  - name: "Md Shahid Ansari"
+    email: "sajarsadaf2000@gmail.com"
+    role: "Solo Developer"
+
+github_repo: "https://github.com/md-shahid-ansari/redrob-ranker"
+
+sandbox_link: ""
+
+reproduce_command: "python rank.py"
+
+compute:
+  platform: "Windows 11 (local PC)"
+  cpu_cores: 4                     # Physical cores (i5-11300H has 4 cores, 8 threads)
+  ram_gb: 8
+  python_version: "3.11.4"
+  os: "Windows 11"
+  uses_gpu_for_inference: false
+  has_network_during_ranking: false
+  pre_computation_required: true
+  pre_computation_time_minutes: 120   # Actual precompute time ~2 hours
+
+ai_tools_used:
+  - "Claude"
+  - "Deekseek"
+
+ai_usage_summary: |
+  Used Claude and Deekseek for architectural discussion, code review, and debugging.
+  No candidate data was sent to any AI service.
+
+methodology_summary: |
+  Five-component weighted ranker: 
+  - Semantic similarity (sentence-transformers embeddings)
+  - Career trajectory (product vs services, ML role fit, YoE, tenure stability)
+  - Trust-adjusted skill coverage (endorsements, duration, assessment scores)
+  - Behavioral signals (availability, engagement, credibility)
+  - Location preference (Pune/Noida/Hyd)
+  Honeypot detection filters temporal/salary anomalies. All rules are precomputed; ranking runs in <2 min.
+
+declarations:
+  read_submission_spec: true
+  code_is_original_work: true
+  no_collusion: true
+  honeypot_check_done: true
+  reproduction_tested: true
