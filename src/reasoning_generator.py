@@ -1,4 +1,4 @@
-from typing import Dict, Any, List
+from typing import Dict, Any
 
 def generate_reasoning(candidate: Dict[str, Any], scores: Dict[str, float], rank: int, is_honeypot: bool) -> str:
     """

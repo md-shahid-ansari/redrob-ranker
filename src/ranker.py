@@ -1,4 +1,3 @@
-import numpy as np
 from typing import Dict, Any, Tuple
 from src.config import WEIGHTS, LOCATION_WEIGHTS
 from src.career_scorer import career_score

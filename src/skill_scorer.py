@@ -1,4 +1,4 @@
-from typing import Dict, Any, List, Set
+from typing import Dict, Any
 from src.config import JD_REQUIRED_SKILLS, JD_NICE_TO_HAVE, SKILL_SUB_WEIGHTS, RED_FLAG_SKILLS, MIN_ENDORSEMENTS_FOR_TRUST, MIN_DURATION_MONTHS_FOR_TRUST, ASSESSMENT_THRESHOLD_GOOD
 
 def get_skill_trust( skill: Dict[str, Any]) -> float:

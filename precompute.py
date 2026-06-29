@@ -8,7 +8,6 @@ Saves:
 
 import json
 import numpy as np
-from tqdm import tqdm
 from pathlib import Path
 
 from src.loader import load_candidates_stream

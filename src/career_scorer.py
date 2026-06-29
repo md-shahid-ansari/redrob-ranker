@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any
 from src.config import SERVICES_COMPANIES, PRODUCT_COMPANIES, ML_TITLE_KEYWORDS, CAREER_SUB_WEIGHTS
 
 # Simple title level mapping for trajectory scoring

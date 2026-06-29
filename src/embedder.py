@@ -1,6 +1,4 @@
-import numpy as np
 from sentence_transformers import SentenceTransformer
-from tqdm import tqdm
 
 MODEL_NAME = "all-MiniLM-L6-v2"
 
