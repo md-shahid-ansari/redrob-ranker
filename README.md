@@ -1,124 +1,16 @@
 # Redrob AI Candidate Ranker
 
-> **INDIA RUNS Hackathon — Intelligent Candidate Discovery & Ranking Challenge**
+Rank 100K candidates against a Senior AI Engineer job description.
 
-A production-grade AI candidate ranking system that goes beyond keyword matching. It ranks **100,000 candidates** against a job description using semantic similarity, career trajectory analysis, trust-adjusted skill scoring, and behavioral signals.
+## 📁 Project Structure
 
----
-
-## Architecture
-
-```text
-OFFLINE (Run Once)
-┌────────────────────────────┐
-│ precompute.py              │
-│ Generates candidate        │
-│ embeddings (~1.5 GB)       │
-└──────────────┬─────────────┘
-               │
-               ▼
-      candidate_embeddings.npy
-
-ONLINE (CPU Only, <5 Minutes)
-┌────────────────────────────┐
-│ rank.py                    │
-│ Loads embeddings           │
-│ Multi-signal scoring       │
-│ Generates submission.csv   │
-└────────────────────────────┘
 ```
-
----
-
-## Scoring Pipeline
-
-| Signal              | Weight | Description                                              |
-| ------------------- | -----: | -------------------------------------------------------- |
-| Career Trajectory   |    30% | Product vs. service companies, ML experience, tenure     |
-| Skill Fit           |    25% | Trust-adjusted skills using endorsements and duration    |
-| Semantic Similarity |    25% | Sentence Transformer embedding similarity                |
-| Behavioral Signals  |    15% | Platform activity, response rate, availability           |
-| Location            |     5% | Preference for Pune, Noida, Hyderabad, Mumbai, Delhi NCR |
-
----
-
-## Setup
-
-### Clone the Repository
-
-```bash
-git clone https://github.com/YOUR_USERNAME/redrob-ranker.git
-cd redrob-ranker
-```
-
-### Create a Virtual Environment
-
-**Windows**
-
-```bash
-python -m venv venv
-venv\Scripts\activate
-```
-
-**macOS / Linux**
-
-```bash
-python3 -m venv venv
-source venv/bin/activate
-```
-
-### Install Dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### Add Dataset
-
-Place the dataset file in:
-
-```text
-data/candidates.jsonl.gz
-```
-
----
-
-## Reproduce the Submission
-
-### 1. Precompute Embeddings (Run Once)
-
-```bash
-python precompute.py \
-    --candidates data/candidates.jsonl.gz \
-    --out data/precomputed/
-```
-
-### 2. Rank Candidates
-
-```bash
-python rank.py \
-    --candidates data/candidates.jsonl.gz \
-    --embeddings data/precomputed/ \
-    --out submission/submission.csv
-```
-
-### 3. Validate Submission
-
-```bash
-python validate_submission.py submission/submission.csv
-```
-
----
-
-## Project Structure
-
-```text
 redrob-ranker/
-├── data/
-│   ├── sample_candidates.json
-│   ├── job_description.md
-│   └── precomputed/
-├── src/
+├── data/                      # Place input files here
+│   ├── candidates.jsonl.gz    # 100K candidate dataset (provided)
+│   ├── job_description.docx   # Job description (provided)
+│   └── precomputed/           # Generated after precompute (gitignored)
+├── src/                       # Scoring modules
 │   ├── config.py
 │   ├── loader.py
 │   ├── jd_parser.py
@@ -129,60 +21,120 @@ redrob-ranker/
 │   ├── honeypot_detector.py
 │   ├── ranker.py
 │   └── reasoning_generator.py
-├── demo/
+├── demo/                      # Streamlit sandbox
 │   └── app.py
-├── notebooks/
-│   └── eda.py
-├── precompute.py
-├── rank.py
-├── validate_submission.py
-├── submission_metadata.yaml
-├── requirements.txt
-├── README.md
-└── .gitignore
+├── precompute.py              # Generate embeddings (run once)
+├── rank.py                    # Main ranking command
+├── requirements.txt           # Python dependencies
+└── validate_submission.py     # Validation script (provided)
 ```
 
----
+## 🚀 Setup
 
-## Tech Stack
+### 1. Clone the repository
 
-* **sentence-transformers** (`all-MiniLM-L6-v2`) – Semantic embeddings
-* **FAISS** – Fast vector similarity search
-* **NumPy & Pandas** – Data processing
-* **Streamlit** – Interactive demo application
-
----
-
-## Key Design Decisions
-
-### Why No LLM API Calls During Ranking?
-
-The competition requires ranking **100,000 candidates** in under **5 minutes** on **CPU only**, with **no network access**. Calling external LLM APIs would violate these constraints. Instead, embeddings are generated offline and combined with deterministic multi-signal scoring during inference.
-
-### Why Trust-Adjusted Skill Scoring?
-
-A candidate claiming an **Expert** skill with **0 endorsements** and **1 month** of experience should not score the same as someone with **50 endorsements** and **3+ years** of experience. Skill confidence is adjusted using endorsements, duration, and assessment scores.
-
-### Why Penalize Service-Only Careers?
-
-The job description prioritizes candidates with product-company experience. Candidates whose careers are exclusively at companies like TCS, Infosys, Wipro, Cognizant, or Accenture receive a ranking penalty rather than being excluded outright. Previous product-company experience can offset this penalty.
-
----
-
-## Sandbox
-
-A Streamlit demo will be available here:
-
-```text
-https://YOUR_SANDBOX_LINK_HERE
+```bash
+git clone https://github.com/md-shahid-ansari/redrob-ranker.git
+cd redrob-ranker
 ```
 
+### 2. Create a virtual environment
+
+```bash
+python -m venv venv
+source venv/bin/activate      # Linux/macOS
+# or
+venv\Scripts\activate         # Windows
+```
+
+### 3. Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+## 📥 Data Preparation
+
+Place the following files from the provided bundle into the `data/` folder:
+
+- `candidates.jsonl.gz` – 100K candidate profiles (compressed)
+- `job_description.docx` – Senior AI Engineer JD
+
+**Note:** The `data/precomputed/` folder will be generated later; it is ignored by Git to avoid uploading large files.
+
+## ⚙️ Precompute Embeddings (One‑time)
+
+This step creates semantic embeddings for all candidates. It takes ~15–120 minutes depending on your hardware, but only needs to run once.
+
+```bash
+python precompute.py
+```
+
+After completion, you should see:
+
+- `data/precomputed/candidate_embeddings.npy` (~145 MB)
+- `data/precomputed/candidate_ids.json`
+- `data/precomputed/jd_embedding.npy`
+
+## 🏆 Rank Candidates
+
+Run the ranking pipeline to produce `submission.csv` with the top 100 candidates.
+
+```bash
+python rank.py
+```
+
+This loads the precomputed embeddings, scores candidates, and writes the output. Runtime is < 3 minutes on CPU.
+
+## ✅ Validate Submission
+
+Use the provided validation script to check the format and contents of your CSV:
+
+```bash
+python validate_submission.py submission.csv
+```
+
+Expected output: `Submission is valid.`
+
+## 🧪 Live Sandbox (Streamlit)
+
+You can also run an interactive demo that works on uploaded candidate files (no precompute required for small samples).
+
+```bash
+streamlit run demo/app.py
+```
+
+A public version is available at:  
+[https://redrob-ranker-by-shahid.streamlit.app/](https://redrob-ranker-by-shahid.streamlit.app/)
+
+## 📊 Scoring Components
+
+| Component | Weight | Description |
+|-----------|--------|-------------|
+| Semantic similarity | 25% | JD‑candidate embedding cosine similarity |
+| Career trajectory | 30% | Product vs services companies, ML role fit, YoE, tenure stability |
+| Skill matching | 25% | Trust‑adjusted coverage of required skills (endorsements, duration) |
+| Behavioral | 15% | Availability, engagement, credibility, market demand |
+| Location | 5% | Preference for Pune/Noida/Hyderabad |
+
+Honeypot detection automatically flags and down‑ranks impossible or fraudulent profiles.
+
+## 🧠 Methodology Summary
+
+- Precompute offline embeddings using `all-MiniLM-L6-v2` (80 MB).
+- During ranking, filter to top 5K candidates by semantic similarity.
+- Apply five scoring components with configurable weights.
+- Generate per‑candidate reasoning referencing actual profile data.
+- Final CSV includes candidate ID, rank, score, and reasoning.
+
+## ⚠️ Important Notes
+
+- The `rank.py` script **does not** require network access.
+- All models are loaded locally (no external API calls).
+- Precomputed embeddings are large; ensure you have enough disk space (~2 GB).
+- The sandbox demo runs on‑the‑fly with a small sample, so no precompute is required there.
+
 ---
 
-## Team
-
-**Team:** GSP (Md Shahid Ansari)
-
-**Hackathon:** INDIA RUNS by Redrob AI × Hack2Skill
-
-**Track:** Track 1 — Data & AI Challenge
+**Team:** Md Shahid Ansari
+**Repository:** [https://github.com/md-shahid-ansari/redrob-ranker](https://github.com/md-shahid-ansari/redrob-ranker)
