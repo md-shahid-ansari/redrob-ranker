@@ -101,3 +101,50 @@ TRUST_WEIGHTS = {
     "duration_months": 0.3,
     "assessment_score": 0.3,
 }
+
+# Career scorer sub‑weights (sum to 1)
+CAREER_SUB_WEIGHTS = {
+    "product_company": 0.25,
+    "ml_role": 0.25,
+    "yoe_fit": 0.15,
+    "tenure_stability": 0.15,
+    "trajectory": 0.10,
+    "recency": 0.10,
+}
+
+# Skill scorer sub‑weights (sum to 1)
+SKILL_SUB_WEIGHTS = {
+    "must_have_coverage": 0.50,
+    "trust_adjustment": 0.30,
+    "nice_to_have_bonus": 0.15,
+    "red_flag_penalty": 0.05,   # penalty factor (subtracted from total)
+}
+
+# Behavioral scorer sub‑weights (sum to 1)
+BEHAVIORAL_SUB_WEIGHTS = {
+    "availability": 0.35,
+    "engagement": 0.25,
+    "credibility": 0.20,
+    "market_demand": 0.10,
+    "reliability": 0.10,
+}
+
+# Thresholds for red flag penalty (skill)
+RED_FLAG_SKILLS = {"computer vision", "speech recognition", "robotics"}  # penalize if primary, but we'll handle via absence of NLP
+
+# Skill trust parameters
+MIN_ENDORSEMENTS_FOR_TRUST = 3
+MIN_DURATION_MONTHS_FOR_TRUST = 6
+ASSESSMENT_THRESHOLD_GOOD = 60
+
+TOP_N = 100
+TOP_K_FILTER = 5000
+
+LOCATION_WEIGHTS = {
+    "pune": 1.0,
+    "noida": 1.0,
+    "hyderabad": 1.0,
+    "mumbai": 0.8,
+    "delhi ncr": 0.8,
+    "gurugram": 0.8,
+}
