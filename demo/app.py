@@ -1,5 +1,6 @@
 import streamlit as st
 import json
+import gzip
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -7,7 +8,6 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.loader import load_candidates_stream
 from src.ranker import compute_final_score
 from src.reasoning_generator import generate_reasoning
 from src.embedder import get_embedder
@@ -17,10 +17,7 @@ st.set_page_config(page_title="Redrob AI Candidate Ranker", layout="wide")
 st.title("🤖 Redrob AI Candidate Ranker")
 st.markdown("Rank candidates against the Senior AI Engineer JD")
 
-# ----- Configuration -----
-SAMPLE_SIZE = 100  # candidates to rank in demo without precomputed data
-
-# ----- Helper to build candidate text -----
+# ---------- Helper ----------
 def build_candidate_text(candidate):
     profile = candidate.get("profile", {})
     parts = [
@@ -31,127 +28,106 @@ def build_candidate_text(candidate):
     skills = candidate.get("skills", [])
     skill_names = [s.get("name", "") for s in skills]
     parts.append(" ".join(skill_names))
-    # Also include career history descriptions
     history = candidate.get("career_history", [])
     for job in history:
         parts.append(job.get("title", ""))
         parts.append(job.get("description", ""))
     return " ".join(parts)
 
-# ----- Check for precomputed files -----
-PRECOMPUTED_PATH = Path("data/precomputed")
-embeddings_exist = (PRECOMPUTED_PATH / "candidate_embeddings.npy").exists()
-ids_exist = (PRECOMPUTED_PATH / "candidate_ids.json").exists()
-jd_emb_exist = (PRECOMPUTED_PATH / "jd_embedding.npy").exists()
-
-if embeddings_exist and ids_exist and jd_emb_exist:
-    @st.cache_resource
-    def load_precomputed():
-        embeddings = np.load(PRECOMPUTED_PATH / "candidate_embeddings.npy")
-        with open(PRECOMPUTED_PATH / "candidate_ids.json", "r") as f:
-            ids = json.load(f)
-        jd_emb = np.load(PRECOMPUTED_PATH / "jd_embedding.npy")
-        return embeddings, ids, jd_emb
-    embeddings, candidate_ids, jd_emb = load_precomputed()
-    st.success("✅ Precomputed embeddings loaded (full dataset)")
-    use_full = True
-else:
-    st.warning("⚠️ Precomputed embeddings not found. Using on‑the‑fly embeddings for a small sample.")
-    use_full = False
-    # We'll compute JD embedding once
-    embedder = get_embedder()
-    jd_text = load_jd_text()
-    jd_emb = embedder.embed_single(jd_text)
-
-# ----- Load candidates (full or sample) -----
+# ---------- Cached Resources ----------
 @st.cache_resource
-def load_candidates_map():
-    """Return dict of candidate_id -> candidate for all candidates (if using full precomputed)"""
-    if use_full:
-        return {c["candidate_id"]: c for c in load_candidates_stream()}
-    else:
-        # Only load SAMPLE_SIZE candidates
-        sample = []
-        for i, c in enumerate(load_candidates_stream()):
-            if i >= SAMPLE_SIZE:
-                break
-            sample.append(c)
-        return {c["candidate_id"]: c for c in sample}
+def get_cached_embedder():
+    return get_embedder()
 
-# ----- Main UI -----
-option = st.radio("Choose input", ["Sample candidates", "Upload custom JSON"])
+@st.cache_resource
+def load_jd_embedding():
+    embedder = get_cached_embedder()
+    jd_text = load_jd_text()
+    return embedder.embed_single(jd_text)
 
-if option == "Upload custom JSON":
-    uploaded = st.file_uploader("Upload candidates.jsonl (max 100 candidates)", type=["jsonl"])
-    if uploaded:
-        raw = uploaded.read().decode("utf-8").strip().split("\n")
-        target_ids = [json.loads(line)["candidate_id"] for line in raw if line.strip()]
-        candidates_map = load_candidates_map()
-        target_candidates = [candidates_map[cid] for cid in target_ids if cid in candidates_map]
-        st.info(f"Loaded {len(target_candidates)} candidates")
-    else:
-        target_candidates = []
-else:
-    candidates_map = load_candidates_map()
-    if use_full:
-        # Use first 1000 for speed in demo
-        target_candidates = list(candidates_map.values())[:1000]
-    else:
-        target_candidates = list(candidates_map.values())
-    st.info(f"Using {len(target_candidates)} candidates")
+# ---------- Sidebar Upload ----------
+st.sidebar.header("Upload Candidate Data")
+uploaded_file = st.sidebar.file_uploader(
+    "Upload candidates file (JSONL, JSONL.gz, or JSON array)",
+    type=["jsonl", "gz", "json"]
+)
 
-# ----- Rank button -----
-if st.button("🚀 Rank Candidates") and target_candidates:
-    with st.spinner("Scoring..."):
-        results = []
-        if use_full:
-            # Precomputed: use dot product with full embeddings
-            id_to_idx = {cid: i for i, cid in enumerate(candidate_ids)}
-            norm_emb = embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True)
-            norm_jd = jd_emb / np.linalg.norm(jd_emb)
-            for c in target_candidates:
-                idx = id_to_idx.get(c["candidate_id"])
-                if idx is None:
-                    continue
-                sim = float(np.dot(norm_emb[idx], norm_jd))
-                final, scores, is_honeypot, _, _ = compute_final_score(c, sim)
-                reasoning = generate_reasoning(c, scores, len(results)+1, is_honeypot)
-                results.append({
-                    "candidate_id": c["candidate_id"],
-                    "name": c["profile"]["anonymized_name"],
-                    "title": c["profile"]["current_title"],
-                    "yoe": c["profile"]["years_of_experience"],
-                    "score": final,
-                    "is_honeypot": is_honeypot,
-                    "reasoning": reasoning,
-                })
+candidates = []
+if uploaded_file is not None:
+    try:
+        if uploaded_file.name.endswith(".gz"):
+            with gzip.open(uploaded_file, "rt", encoding="utf-8") as f:
+                raw = f.read()
         else:
-            # On‑the‑fly: compute embeddings for each candidate
-            embedder = get_embedder()
-            # Normalize JD embedding once
+            raw = uploaded_file.read().decode("utf-8")
+
+        lines = raw.strip().split("\n")
+        if len(lines) == 1 and raw.strip().startswith("["):
+            # JSON array
+            data = json.loads(raw)
+            if isinstance(data, list):
+                candidates = data
+            else:
+                st.sidebar.error("Invalid JSON: expected an array")
+        else:
+            # JSONL
+            for line in lines:
+                if line.strip():
+                    candidates.append(json.loads(line))
+        st.sidebar.success(f"Loaded {len(candidates)} candidates")
+    except Exception as e:
+        st.sidebar.error(f"Error reading file: {e}")
+
+# ---------- Load sample if available ----------
+if not candidates:
+    sample_path = Path("data/sample_candidates.json")
+    if sample_path.exists():
+        with open(sample_path, "r") as f:
+            sample_data = json.load(f)
+            if isinstance(sample_data, list):
+                candidates = sample_data
+                st.info("📂 Loaded sample candidates from data/sample_candidates.json")
+    else:
+        st.info("📤 Please upload a candidates file (JSONL or JSONL.gz) to get started.")
+
+# ---------- Ranking ----------
+if candidates:
+    if len(candidates) > 1000:
+        st.warning(f"⚠️ Large file ({len(candidates)} candidates). Only first 1000 will be ranked for performance.")
+        candidates = candidates[:1000]
+
+    if st.button("🚀 Rank Candidates"):
+        with st.spinner("Computing embeddings and ranking..."):
+            embedder = get_cached_embedder()
+            jd_emb = load_jd_embedding()
             norm_jd = jd_emb / np.linalg.norm(jd_emb)
-            for c in target_candidates:
+
+            results = []
+            for i, c in enumerate(candidates):
                 text = build_candidate_text(c)
                 cand_emb = embedder.embed_single(text)
                 norm_cand = cand_emb / np.linalg.norm(cand_emb)
                 sim = float(np.dot(norm_cand, norm_jd))
+
                 final, scores, is_honeypot, _, _ = compute_final_score(c, sim)
-                reasoning = generate_reasoning(c, scores, len(results)+1, is_honeypot)
+                reasoning = generate_reasoning(c, scores, i+1, is_honeypot)
+
                 results.append({
-                    "candidate_id": c["candidate_id"],
-                    "name": c["profile"]["anonymized_name"],
-                    "title": c["profile"]["current_title"],
-                    "yoe": c["profile"]["years_of_experience"],
+                    "candidate_id": c.get("candidate_id", f"CAND_{i:07d}"),
+                    "name": c.get("profile", {}).get("anonymized_name", "Unknown"),
+                    "title": c.get("profile", {}).get("current_title", ""),
+                    "yoe": c.get("profile", {}).get("years_of_experience", 0),
                     "score": final,
                     "is_honeypot": is_honeypot,
                     "reasoning": reasoning,
                 })
 
-        results.sort(key=lambda x: x["score"], reverse=True)
-        df = pd.DataFrame(results)
-        st.subheader("📊 Ranked Candidates")
-        st.dataframe(df[["candidate_id", "name", "title", "yoe", "score", "is_honeypot"]])
+            results.sort(key=lambda x: x["score"], reverse=True)
+            df = pd.DataFrame(results)
 
-        # Download CSV
-        csv = df.to_csv(index=False)
-        st.download_button("⬇️ Download CSV", csv, "demo_submission.csv", "text/csv")
+            st.subheader("📊 Ranked Candidates")
+            st.dataframe(df[["candidate_id", "name", "title", "yoe", "score", "is_honeypot"]])
+
+            # Download CSV
+            csv = df.to_csv(index=False)
+            st.download_button("⬇️ Download CSV", csv, "demo_submission.csv", "text/csv")
