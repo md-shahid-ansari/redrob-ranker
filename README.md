@@ -119,7 +119,7 @@ A public version is available at:
 
 Honeypot detection automatically flags and down‑ranks impossible or fraudulent profiles.
 
-## 🧠 Methodology Summary
+## 🧠 Methodology Summary 
 
 - Precompute offline embeddings using `all-MiniLM-L6-v2` (80 MB).
 - During ranking, filter to top 5K candidates by semantic similarity.
